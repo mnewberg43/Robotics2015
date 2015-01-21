@@ -48,14 +48,15 @@ public class Robot extends IterativeRobot {
      * used for any initialization code.
      */
     public void robotInit() {
-    myRobot = new RobotDrive(0,1,2,3);
-    myGyro = new Gyro(0);
-    frame = NIVision.imaqCreateImage(NIVision.ImageType.IMAGE_RGB, 0);
+	    myRobot = new RobotDrive(0,1,2,3);
+	    myGyro = new Gyro(0);
+	    frame = NIVision.imaqCreateImage(NIVision.ImageType.IMAGE_RGB, 0);
 
         // open the camera at the IP address assigned. This is the IP address that the camera
         // can be accessed through the web interface.
 //        camera = new AxisCamera("10.2.91.11"); TODO
         compressor.setClosedLoopControl(true);
+        stick = new Joystick(0);
         
     }
     
@@ -94,8 +95,6 @@ public class Robot extends IterativeRobot {
 //
 //    	//YellowToteTracker tracker; TODO: get this to work
 
-        stick = new Joystick(0);
-        SmartDashboard.putString("haha","haha");
     }
 
     /**
@@ -104,16 +103,15 @@ public class Robot extends IterativeRobot {
     public void teleopPeriodic() {
     while (isOperatorControl() && isEnabled()) {
     	myRobot.mecanumDrive_Cartesian(-stick.getY(), stick.getZ(), stick.getX(), 0);
-        Timer.delay(0.005);
         
-        NIVision.Rect rect = new NIVision.Rect(10, 10, 100, 100);
-
-    
-        camera.getImage(frame);
-        NIVision.imaqDrawShapeOnImage(frame, frame, rect,
-                DrawMode.DRAW_VALUE, ShapeMode.SHAPE_OVAL, 0.0f);
-
-        CameraServer.getInstance().setImage(frame);
+//        NIVision.Rect rect = new NIVision.Rect(10, 10, 100, 100);
+//
+//    
+//        camera.getImage(frame);
+//        NIVision.imaqDrawShapeOnImage(frame, frame, rect,
+//                DrawMode.DRAW_VALUE, ShapeMode.SHAPE_OVAL, 0.0f);
+//
+//        CameraServer.getInstance().setImage(frame);
         if (stick.getRawButton(1)){
         	solenoid.set(DoubleSolenoid.Value.kForward);
         }
