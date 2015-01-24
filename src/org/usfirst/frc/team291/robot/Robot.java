@@ -15,7 +15,6 @@ import com.ni.vision.NIVision.ShapeMode;
 //import YellowToteTracker;
 
 
-
 import edu.wpi.first.wpilibj.CameraServer;
 import edu.wpi.first.wpilibj.SampleRobot;
 import edu.wpi.first.wpilibj.Timer;
@@ -23,6 +22,7 @@ import edu.wpi.first.wpilibj.vision.AxisCamera;
 import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.Gyro;
 import edu.wpi.first.wpilibj.smartdashboard.*;
+import edu.wpi.first.wpilibj.DigitalOutput;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -38,10 +38,15 @@ public class Robot extends IterativeRobot {
 	int session;
 	Image frame;
 	AxisCamera camera;
+	Timer myTimer = new Timer();
+	Gyro gyro;
+	double Kp = 0.03;
+	double angle;
 	Compressor compressor = new Compressor(0);
 	DoubleSolenoid solenoid = new DoubleSolenoid(0,1);
-	Timer myTimer = new Timer();
-	Gyro myGyro;
+	DigitalOutput blinky = new DigitalOutput(0);
+	double stickX, stickY;
+	double autoCounter = 0.0;
 
     /**
      * This function is run when the robot is first started up and should be
@@ -49,12 +54,13 @@ public class Robot extends IterativeRobot {
      */
     public void robotInit() {
 	    myRobot = new RobotDrive(0,1,2,3);
-	    myGyro = new Gyro(0);
+	    gyro = new Gyro(0);
 	    frame = NIVision.imaqCreateImage(NIVision.ImageType.IMAGE_RGB, 0);
+		
 
         // open the camera at the IP address assigned. This is the IP address that the camera
         // can be accessed through the web interface.
-//        camera = new AxisCamera("10.2.91.11"); TODO
+	    camera = new AxisCamera("10.2.91.11");
         compressor.setClosedLoopControl(true);
         stick = new Joystick(0);
         
@@ -65,16 +71,24 @@ public class Robot extends IterativeRobot {
      */
     public void autonomousInit() {
     	myTimer.start();
+    	gyro.reset();
     }
 
     /**
      * This function is called periodically during autonomous
      */
     public void autonomousPeriodic() {
-        double angle = myGyro.getAngle();
-    	while (isAutonomous() == true) {
-    		myRobot.mecanumDrive_Cartesian(0, -angle/30, 0, 0);
+//        double angle = gyro.getAngle();
+    	Timer.delay(0.005);
+    	autoCounter += 0.005;
+    	if (autoCounter < 1.0) {
+    		myRobot.mecanumDrive_Cartesian(.3, 0, 0, 0);
     	}
+    	else {
+    		myRobot.mecanumDrive_Cartesian(0, 0, 0, 0);
+    	}
+    	SmartDashboard.putNumber("Counter", autoCounter);
+    	LiveWindow.run();
 	}
     
     /**
@@ -89,39 +103,53 @@ public class Robot extends IterativeRobot {
 //                    DrawMode.DRAW_VALUE, ShapeMode.SHAPE_OVAL, 0.0f);
 //
 //            CameraServer.getInstance().setImage(frame);
-//
-//    
-//            Time
-//
-//    	//YellowToteTracker tracker; TODO: get this to work
-
+    	gyro.reset();
+    	SmartDashboard.putNumber("Gyro angle", gyro.getAngle());
+    	blinky.set(false);
     }
 
     /**
      * This function is called periodically during operator control
      */
     public void teleopPeriodic() {
-    while (isOperatorControl() && isEnabled()) {
-    	myRobot.mecanumDrive_Cartesian(-stick.getY(), stick.getZ(), stick.getX(), 0);
-        
-//        NIVision.Rect rect = new NIVision.Rect(10, 10, 100, 100);
-//
-//    
-//        camera.getImage(frame);
-//        NIVision.imaqDrawShapeOnImage(frame, frame, rect,
-//                DrawMode.DRAW_VALUE, ShapeMode.SHAPE_OVAL, 0.0f);
-//
-//        CameraServer.getInstance().setImage(frame);
-        if (stick.getRawButton(1)){
-        	solenoid.set(DoubleSolenoid.Value.kForward);
-        }
-        if (stick.getRawButton(2)){
-        	solenoid.set(DoubleSolenoid.Value.kReverse);
-        }
-        
-        
-        Timer.delay(0.005);
-    }
+        NIVision.Rect rect = new NIVision.Rect(10, 10, 100, 100);
+        while (isOperatorControl() && isEnabled()) {
+	        	angle = gyro.getAngle();
+        	if (stick.getY() < 0.2 && stick.getY() > -0.2){
+        		stickY = 0;
+        	}
+        	else{
+        		stickY = -stick.getY();
+        	}
+        	if (stick.getX() < 0.2 && stick.getX() > -0.2){
+        		stickX = 0;
+        	}
+        	else{
+        		stickX = -stick.getX();
+        	}
+//	    	myRobot.mecanumDrive_Cartesian(-stick.getY(), stick.getZ(), stick.getX(), -angle*Kp);
+	    	myRobot.mecanumDrive_Cartesian(-stick.getY(), stick.getRawAxis(4), stick.getX(), -angle*Kp);
+	        camera.getImage(frame);
+	        NIVision.imaqDrawShapeOnImage(frame, frame, rect,
+	                DrawMode.DRAW_VALUE, ShapeMode.SHAPE_OVAL, 0.0f);
+	
+	        CameraServer.getInstance().setImage(frame);
+	        if (stick.getRawButton(1)){
+	        	solenoid.set(DoubleSolenoid.Value.kForward);
+	        }
+	        if (stick.getRawButton(2)){
+	        	solenoid.set(DoubleSolenoid.Value.kReverse);
+	        }
+	        if (stick.getRawButton(3)){
+	        	blinky.set(true);
+	        }
+	        if (stick.getRawButton(4)){
+	        	blinky.set(false);
+	        }
+	        
+	        
+	        Timer.delay(0.005);
+	    }
 }
     
     /**
