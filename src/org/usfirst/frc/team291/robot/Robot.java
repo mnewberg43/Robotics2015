@@ -23,13 +23,25 @@ import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.Gyro;
 import edu.wpi.first.wpilibj.smartdashboard.*;
 import edu.wpi.first.wpilibj.DigitalOutput;
-
+`
 /**
  * The VM is configured to automatically run this class, and to call the
  * functions corresponding to each mode, as described in the IterativeRobot
  * documentation. If you change the name of this class or the package after
  * creating this project, you must also update the manifest file in the resource
  * directory.
+ */
+
+/**
+ * 
+ * @author Gabriel Dougherty, Supreme Duncan Paterson, Aiden Brzuz, Matt and Matt
+ * 
+ * Cartesian Drive Guide:
+ * Our mecanum drive configuratioin sucks
+ * 
+ *                                Y axis, rotation, X axis,   gyro Angle
+ * myRobot.mecanumDrive_Cartesian(x,      y,        rotation, gyroAngle);
+ * 
  */
 public class Robot extends IterativeRobot {
 	RobotDrive myRobot;
@@ -46,7 +58,10 @@ public class Robot extends IterativeRobot {
 	DoubleSolenoid solenoid = new DoubleSolenoid(0,1);
 	DigitalOutput blinky = new DigitalOutput(0);
 	double stickX, stickY;
-	double autoCounter = 0.0;
+	double correctiveAngle;
+	double deadSpotMin = -0.2;
+	double deadSpotMax = 0.2;
+	double autonomousTurn = 1;
 
     /**
      * This function is run when the robot is first started up and should be
@@ -63,31 +78,52 @@ public class Robot extends IterativeRobot {
 	    camera = new AxisCamera("10.2.91.11");
         compressor.setClosedLoopControl(true);
         stick = new Joystick(0);
-        
+        blinky.set(false);
     }
     
     /**
      * This function is run once each time the robot enters autonomous mode
      */
     public void autonomousInit() {
+    	myTimer.reset();
     	myTimer.start();
     	gyro.reset();
+    	correctiveAngle = 0;
     }
 
     /**
      * This function is called periodically during autonomous
      */
     public void autonomousPeriodic() {
-//        double angle = gyro.getAngle();
+    	correctiveAngle = -gyro.getAngle()/90;
     	Timer.delay(0.005);
-    	autoCounter += 0.005;
-    	if (autoCounter < 1.0) {
-    		myRobot.mecanumDrive_Cartesian(.3, 0, 0, 0);
+    	while (myTimer.get() <= autonomousTurn) {
+    		myRobot.mecanumDrive_Cartesian(0.3, correctiveAngle, 0, 0);
     	}
-    	else {
-    		myRobot.mecanumDrive_Cartesian(0, 0, 0, 0);
+    	gyro.reset();
+    	while (myTimer.get() > (autonomousTurn * 2) && myTimer.get() <= (3 * autonomousTurn)) {
+    		myRobot.mecanumDrive_Cartesian(0.0, correctiveAngle, 0.3, 0);
     	}
-    	SmartDashboard.putNumber("Counter", autoCounter);
+    	gyro.reset();
+    	while (myTimer.get() > (4 * autonomousTurn) && myTimer.get() <= (5 * autonomousTurn)) {
+    		myRobot.mecanumDrive_Cartesian(-0.3, correctiveAngle, 0, 0);
+    	}
+    	gyro.reset();
+    	while (myTimer.get() > (6 * autonomousTurn) && myTimer.get() <= (7 * autonomousTurn)) {
+    		myRobot.mecanumDrive_Cartesian(0, correctiveAngle, -0.3, 0);
+    	}
+    	gyro.reset();
+    	// forward (the beginnings of a bad set of nested if statements
+//    	if (!myTimer.hasPeriodPassed(autonomousTurn)) {
+//    		myRobot.mecanumDrive_Cartesian(0.3, correctiveAngle, 0, 0);
+//    	}
+//    	else {
+//    		if (myTimer.hasPeriodPassed(2 * autonomousTurn && )){
+//    			myRobot.mecanumDrive_Cartesian(0, correctiveAngle, 0.3, 0);
+//    		}
+//    	}
+//    	
+    	SmartDashboard.putNumber("Gyro", correctiveAngle);
     	LiveWindow.run();
 	}
     
@@ -104,8 +140,7 @@ public class Robot extends IterativeRobot {
 //
 //            CameraServer.getInstance().setImage(frame);
     	gyro.reset();
-    	SmartDashboard.putNumber("Gyro angle", gyro.getAngle());
-    	blinky.set(false);
+    	myTimer.stop();
     }
 
     /**
@@ -115,19 +150,18 @@ public class Robot extends IterativeRobot {
         NIVision.Rect rect = new NIVision.Rect(10, 10, 100, 100);
         while (isOperatorControl() && isEnabled()) {
 	        	angle = gyro.getAngle();
-        	if (stick.getY() < 0.2 && stick.getY() > -0.2){
+        	if (stick.getY() < deadSpotMax && stick.getY() > deadSpotMin){
         		stickY = 0;
         	}
         	else{
         		stickY = -stick.getY();
         	}
-        	if (stick.getX() < 0.2 && stick.getX() > -0.2){
+        	if (stick.getX() < deadSpotMax && stick.getX() > deadSpotMin){
         		stickX = 0;
         	}
         	else{
         		stickX = -stick.getX();
         	}
-//	    	myRobot.mecanumDrive_Cartesian(-stick.getY(), stick.getZ(), stick.getX(), -angle*Kp);
 	    	myRobot.mecanumDrive_Cartesian(-stick.getY(), stick.getRawAxis(4), stick.getX(), -angle*Kp);
 	        camera.getImage(frame);
 	        NIVision.imaqDrawShapeOnImage(frame, frame, rect,
