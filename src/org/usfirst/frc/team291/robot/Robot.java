@@ -23,7 +23,7 @@ import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.Gyro;
 import edu.wpi.first.wpilibj.smartdashboard.*;
 import edu.wpi.first.wpilibj.DigitalOutput;
-`
+
 /**
  * The VM is configured to automatically run this class, and to call the
  * functions corresponding to each mode, as described in the IterativeRobot
@@ -37,8 +37,6 @@ import edu.wpi.first.wpilibj.DigitalOutput;
  * @author Gabriel Dougherty, Supreme Duncan Paterson, Aiden Brzuz, Matt and Matt
  * 
  * Cartesian Drive Guide:
- * Our mecanum drive configuratioin sucks
- * 
  *                                Y axis, rotation, X axis,   gyro Angle
  * myRobot.mecanumDrive_Cartesian(x,      y,        rotation, gyroAngle);
  * 
@@ -58,10 +56,13 @@ public class Robot extends IterativeRobot {
 	DoubleSolenoid solenoid = new DoubleSolenoid(0,1);
 	DigitalOutput blinky = new DigitalOutput(0);
 	double stickX, stickY;
-	double correctiveAngle;
+	double correctiveAngle ,
+			currentAngle ;
 	double deadSpotMin = -0.2;
 	double deadSpotMax = 0.2;
 	double autonomousTurn = 1;
+	double angleScaling = -60 ;
+	boolean firstRun ;
 
     /**
      * This function is run when the robot is first started up and should be
@@ -89,30 +90,50 @@ public class Robot extends IterativeRobot {
     	myTimer.start();
     	gyro.reset();
     	correctiveAngle = 0;
+    	SmartDashboard.putNumber("Corrective", correctiveAngle);
+    	SmartDashboard.putNumber("Gyro Angle", currentAngle);
+    	SmartDashboard.putNumber("Angle", (currentAngle-correctiveAngle)/angleScaling);
+    	firstRun = true ;
     }
 
     /**
      * This function is called periodically during autonomous
      */
     public void autonomousPeriodic() {
-    	correctiveAngle = -gyro.getAngle()/90;
+//    	correctiveAngle = gyro.getAngle()/180;
+    	if (firstRun)
+    	{
     	Timer.delay(0.005);
+    	correctiveAngle = gyro.getAngle();
+    	firstRun = false;
+    	}
+    	LiveWindow.run();
     	while (myTimer.get() <= autonomousTurn) {
-    		myRobot.mecanumDrive_Cartesian(0.3, correctiveAngle, 0, 0);
+    		currentAngle = gyro.getAngle();
+    		myRobot.mecanumDrive_Cartesian(0.3, (currentAngle-correctiveAngle)/angleScaling, 0, 0);
     	}
-    	gyro.reset();
+    	LiveWindow.run();
+//    	gyro.reset();
     	while (myTimer.get() > (autonomousTurn * 2) && myTimer.get() <= (3 * autonomousTurn)) {
-    		myRobot.mecanumDrive_Cartesian(0.0, correctiveAngle, 0.3, 0);
+    		myRobot.mecanumDrive_Cartesian(0.0, (currentAngle-correctiveAngle)/angleScaling, 0.6,  0);
     	}
-    	gyro.reset();
+    	LiveWindow.run();
+//    	gyro.reset();
     	while (myTimer.get() > (4 * autonomousTurn) && myTimer.get() <= (5 * autonomousTurn)) {
-    		myRobot.mecanumDrive_Cartesian(-0.3, correctiveAngle, 0, 0);
+    		currentAngle = gyro.getAngle();
+    		myRobot.mecanumDrive_Cartesian(-0.3, (currentAngle-correctiveAngle)/angleScaling, 0, 0);
     	}
-    	gyro.reset();
+    	LiveWindow.run();
+//    	gyro.reset();
     	while (myTimer.get() > (6 * autonomousTurn) && myTimer.get() <= (7 * autonomousTurn)) {
-    		myRobot.mecanumDrive_Cartesian(0, correctiveAngle, -0.3, 0);
+    		currentAngle = gyro.getAngle();
+    		myRobot.mecanumDrive_Cartesian(0, (currentAngle-correctiveAngle)/angleScaling, -0.6, 0);
     	}
-    	gyro.reset();
+    	while (myTimer.get() > (8 * autonomousTurn) && myTimer.get() <= (9 * autonomousTurn)) {
+    		currentAngle = gyro.getAngle();
+    		myRobot.mecanumDrive_Cartesian(0, (currentAngle-correctiveAngle)/angleScaling, 0, 0);
+    	}
+//    	gyro.reset();
     	// forward (the beginnings of a bad set of nested if statements
 //    	if (!myTimer.hasPeriodPassed(autonomousTurn)) {
 //    		myRobot.mecanumDrive_Cartesian(0.3, correctiveAngle, 0, 0);
@@ -123,7 +144,7 @@ public class Robot extends IterativeRobot {
 //    		}
 //    	}
 //    	
-    	SmartDashboard.putNumber("Gyro", correctiveAngle);
+
     	LiveWindow.run();
 	}
     
@@ -180,7 +201,7 @@ public class Robot extends IterativeRobot {
 	        if (stick.getRawButton(4)){
 	        	blinky.set(false);
 	        }
-	        
+	        LiveWindow.run();
 	        
 	        Timer.delay(0.005);
 	    }
