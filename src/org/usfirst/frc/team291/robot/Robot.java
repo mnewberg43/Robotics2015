@@ -119,6 +119,11 @@ public class Robot extends IterativeRobot {
     	SmartDashboard.putNumber("Angle", (currentAngle-correctiveAngle)/angleScaling);
     	firstRun = true;
     }
+    public void grabTote() {
+    	armLeft.set(commandArm*-1.05) ;
+		armRight.set(commandArm*-1) ;
+    	armPneumatics.set(DoubleSolenoid.Value.kForward);
+    }
 
     /**
      * This function is called periodically during autonomous
@@ -290,7 +295,7 @@ public class Robot extends IterativeRobot {
 	        
 	        Timer.delay(0.005);
 	    }
-}
+    }
     
     /**
      * This function is called periodically during test mode
