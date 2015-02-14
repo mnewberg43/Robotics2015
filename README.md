@@ -2,11 +2,11 @@
 Team 291 CIA Robotics Programming team's code for the 2015 season.
 
 # TODO
-- [x] Autonomous
 - [x] Pneumatics
 - [x] Gyro
 - [x] Teleop
 - [x] Camera
+- [x] CAN wiring with new Talon SRXs
+- [ ] Autonomous
 - [ ] Vision Processing
-- [ ] Transition to C++ (related to above)
-- [ ] CAN wiring with new Talon SRXs
+- [ ] Toggle drive mode w/ correct buttons
