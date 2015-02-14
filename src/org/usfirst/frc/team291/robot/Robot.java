@@ -1,9 +1,13 @@
 package org.usfirst.frc.team291.robot;
 
+import edu.wpi.first.wpilibj.CANTalon;
 import edu.wpi.first.wpilibj.Compressor;
 import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.RobotDrive;
+import edu.wpi.first.wpilibj.Talon;
+import edu.wpi.first.wpilibj.TalonSRX;
+import edu.wpi.first.wpilibj.SpeedController;
 import edu.wpi.first.wpilibj.image.ColorImage;
 import edu.wpi.first.wpilibj.image.RGBImage;
 import edu.wpi.first.wpilibj.livewindow.LiveWindow;
@@ -13,6 +17,10 @@ import com.ni.vision.NIVision.DrawMode;
 import com.ni.vision.NIVision.Image;
 import com.ni.vision.NIVision.ShapeMode;
 //import YellowToteTracker;
+
+
+
+
 
 
 import edu.wpi.first.wpilibj.CameraServer;
@@ -43,7 +51,7 @@ import edu.wpi.first.wpilibj.DigitalOutput;
  */
 public class Robot extends IterativeRobot {
 	RobotDrive myRobot;
-	Joystick stick;
+	Joystick stick1, stick2;
 	int autoLoopCounter;
 	int session;
 	Image frame;
@@ -58,18 +66,33 @@ public class Robot extends IterativeRobot {
 	double stickX, stickY;
 	double correctiveAngle ,
 			currentAngle ;
-	double deadSpotMin = -0.2;
-	double deadSpotMax = 0.2;
+	static double deadSpotMin = -0.2;
+	static double deadSpotMax = 0.2;
 	double autonomousTurn = 1;
 	double angleScaling = -60 ;
 	boolean firstRun ;
+	CANTalon motor1, motor2, motor3, motor4;
+	String currentDriveMode = "normal"; // TODO: IMO we should change this
+	String driveModes[] = {"normal","fieldCentric"};
+//	SpeedController speed1, speed2, speed3, speed4;
+	double rotation, commandX, commandY, fieldCentric, commandArm;
+	Talon armLeft;
+	Talon armRight;
+	DoubleSolenoid armPneumatics;
+	
 
     /**
      * This function is run when the robot is first started up and should be
      * used for any initialization code.
      */
     public void robotInit() {
-	    myRobot = new RobotDrive(0,1,2,3);
+    	motor1 = new CANTalon(0);
+    	motor2 = new CANTalon(1);
+    	motor3 = new CANTalon(2);
+    	motor4 = new CANTalon(3);
+	    myRobot = new RobotDrive(motor1,motor2,motor3,motor4);
+	    armLeft = new Talon(1);
+	    armRight = new Talon(0);
 	    gyro = new Gyro(0);
 	    frame = NIVision.imaqCreateImage(NIVision.ImageType.IMAGE_RGB, 0);
 		
@@ -78,8 +101,9 @@ public class Robot extends IterativeRobot {
         // can be accessed through the web interface.
 	    camera = new AxisCamera("10.2.91.11");
         compressor.setClosedLoopControl(true);
-        stick = new Joystick(0);
+        stick1 = new Joystick(0);
         blinky.set(false);
+        commandArm = stick2.getY() ;
     }
     
     /**
@@ -93,7 +117,7 @@ public class Robot extends IterativeRobot {
     	SmartDashboard.putNumber("Corrective", correctiveAngle);
     	SmartDashboard.putNumber("Gyro Angle", currentAngle);
     	SmartDashboard.putNumber("Angle", (currentAngle-correctiveAngle)/angleScaling);
-    	firstRun = true ;
+    	firstRun = true;
     }
 
     /**
@@ -170,37 +194,98 @@ public class Robot extends IterativeRobot {
     public void teleopPeriodic() {
         NIVision.Rect rect = new NIVision.Rect(10, 10, 100, 100);
         while (isOperatorControl() && isEnabled()) {
-	        	angle = gyro.getAngle();
-        	if (stick.getY() < deadSpotMax && stick.getY() > deadSpotMin){
+        	commandY = -stick1.getY();
+        	commandX = stick1.getX();
+        	rotation = stick1.getRawAxis(4);
+	        angle = gyro.getAngle();
+        	if (stick1.getY() < deadSpotMax && stick1.getY() > deadSpotMin){
         		stickY = 0;
         	}
         	else{
-        		stickY = -stick.getY();
+        		stickY = -stick1.getY();
         	}
-        	if (stick.getX() < deadSpotMax && stick.getX() > deadSpotMin){
+        	if (stick1.getX() < deadSpotMax && stick1.getX() > deadSpotMin){
         		stickX = 0;
         	}
         	else{
-        		stickX = -stick.getX();
+        		stickX = -stick1.getX();
         	}
-	    	myRobot.mecanumDrive_Cartesian(-stick.getY(), stick.getRawAxis(4), stick.getX(), -angle*Kp);
+        	
 	        camera.getImage(frame);
 	        NIVision.imaqDrawShapeOnImage(frame, frame, rect,
 	                DrawMode.DRAW_VALUE, ShapeMode.SHAPE_OVAL, 0.0f);
-	
 	        CameraServer.getInstance().setImage(frame);
-	        if (stick.getRawButton(1)){
+	        
+	        // Control Buttons and Such
+	        if (stick1.getRawButton(1)) {
 	        	solenoid.set(DoubleSolenoid.Value.kForward);
 	        }
-	        if (stick.getRawButton(2)){
+	        else if (stick1.getRawButton(2)) {
 	        	solenoid.set(DoubleSolenoid.Value.kReverse);
 	        }
-	        if (stick.getRawButton(3)){
+	        else if (stick1.getRawButton(3)) {
 	        	blinky.set(true);
 	        }
-	        if (stick.getRawButton(4)){
+	        else if (stick1.getRawButton(4)) {
 	        	blinky.set(false);
 	        }
+	        else if (stick1.getRawButton(5)) { // TODO: Assign to correct button
+	        	currentDriveMode = driveModes[0];
+	        }
+	        else if (stick1.getRawButton(6)) { // TODO: Assign to correct button
+	        	currentDriveMode = driveModes[1];
+	        }
+	        
+	        // Drive Mode Toggles
+	        if (currentDriveMode.equals(driveModes[0])) { // Normal
+        		fieldCentric = 0;
+        	}
+	        else if (currentDriveMode.equals(driveModes[1])){ // Field-Centric
+	        	fieldCentric = gyro.getAngle();
+	        }
+	        if ( stick2.getRawButton(1) )
+    		{
+    			armPneumatics.set(DoubleSolenoid.Value.kForward);
+    		}
+    		else if (stick2.getRawButton(2))
+    		{
+    			armPneumatics.set(DoubleSolenoid.Value.kReverse);
+    		}
+    		else 
+    		{
+    			armPneumatics.set(DoubleSolenoid.Value.kOff);
+    		}
+	        commandArm = stick2.getY() ;
+    		
+    		if ( (commandArm < .2) && (commandArm > -.2) )
+    		{
+    			commandArm = 0 ;
+
+    		}
+    		commandArm = commandArm * .7 ;
+    		
+    		if (commandArm == 0 )
+    		{
+    			if (stick2.getRawButton(5))
+        		{
+    				armLeft.set(.2);
+        		}
+        		else if (stick2.getRawButton(6))
+        		{
+        			armRight.set(.2);
+        		}
+        		else
+        		{
+        			armLeft.set(0);
+        			armRight.set(0); 
+        		}
+    		}
+    		else
+    		{
+    			armLeft.set(commandArm*-1.05) ;
+    			armRight.set(commandArm*-1) ;
+    		}
+	        myRobot.mecanumDrive_Cartesian(commandY, rotation, commandX, fieldCentric);
 	        LiveWindow.run();
 	        
 	        Timer.delay(0.005);
