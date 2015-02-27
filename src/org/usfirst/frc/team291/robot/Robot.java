@@ -11,6 +11,7 @@ import edu.wpi.first.wpilibj.SpeedController;
 import edu.wpi.first.wpilibj.image.ColorImage;
 import edu.wpi.first.wpilibj.image.RGBImage;
 import edu.wpi.first.wpilibj.livewindow.LiveWindow;
+import com.ni.vision.NIVision.DrawMode;
 
 import com.ni.vision.NIVision;
 import com.ni.vision.NIVision.DrawMode;
@@ -31,6 +32,7 @@ import edu.wpi.first.wpilibj.DoubleSolenoid;
 import edu.wpi.first.wpilibj.Gyro;
 import edu.wpi.first.wpilibj.smartdashboard.*;
 import edu.wpi.first.wpilibj.DigitalOutput;
+import edu.wpi.first.wpilibj.BuiltInAccelerometer;
 
 /**
  * The VM is configured to automatically run this class, and to call the
@@ -72,14 +74,18 @@ public class Robot extends IterativeRobot {
 	double angleScaling = -60 ;
 	boolean firstRun ;
 	CANTalon motor1, motor2, motor3, motor4;
-	String currentDriveMode = "normal"; // TODO: IMO we should change this
+	String currentDriveMode = "normal"; // TODO: IMO we should change this, I dunno, maybe
 	String driveModes[] = {"normal","fieldCentric"};
-//	SpeedController speed1, speed2, speed3, speed4;
 	double rotation, commandX, commandY, fieldCentric, commandArm;
 	Talon armLeft;
 	Talon armRight;
 	DoubleSolenoid armPneumatics;
-	
+	BuiltInAccelerometer accl;
+	double acclX, acclY, acclZ;
+	double a1, a2, a3, aCurrent;
+	double v1, v2, v3, vCurrent;
+	double dCurrent;
+	double timeInterval;
 
     /**
      * This function is run when the robot is first started up and should be
@@ -95,6 +101,7 @@ public class Robot extends IterativeRobot {
 	    armRight = new Talon(0);
 	    gyro = new Gyro(0);
 	    frame = NIVision.imaqCreateImage(NIVision.ImageType.IMAGE_RGB, 0);
+	    
 		
 
         // open the camera at the IP address assigned. This is the IP address that the camera
@@ -104,6 +111,17 @@ public class Robot extends IterativeRobot {
         stick1 = new Joystick(0);
         blinky.set(false);
         commandArm = stick2.getY() ;
+        accl = new BuiltInAccelerometer();
+        a2 = 99;
+        a1 = 99;
+        a3 = 99;
+        aCurrent = 99;
+        v2 = 99;
+        v1 = 99;
+        v3 = 99;
+        vCurrent = 99;
+        dCurrent = 99;
+        timeInterval = 0.5; // TODO: Use real interval
     }
     
     /**
@@ -119,6 +137,27 @@ public class Robot extends IterativeRobot {
     	SmartDashboard.putNumber("Angle", (currentAngle-correctiveAngle)/angleScaling);
     	firstRun = true;
     }
+    
+    private double integralOf(double lower, double middle, double upper, double current) {
+    	double d = 0;
+    	if (lower == 99) {
+    		lower = current;
+    	}
+    	else if (middle == 99) {
+    		middle = current;
+    	}
+    	else if (upper == 99) {
+    		upper = current;
+    	}
+    	if (upper != 99) {
+        	lower = middle;
+        	middle = upper;
+        	upper = current;
+        }
+    	d = (1/3) * timeInterval * (lower + 4 * middle + upper); // Simpson's rule
+    	return d;
+    }
+    	
     public void grabTote() {
     	armLeft.set(commandArm*-1.05) ;
 		armRight.set(commandArm*-1) ;
@@ -190,7 +229,7 @@ public class Robot extends IterativeRobot {
 //
 //            CameraServer.getInstance().setImage(frame);
     	gyro.reset();
-    	myTimer.stop();
+    	myTimer.reset();
     }
 
     /**
@@ -260,9 +299,9 @@ public class Robot extends IterativeRobot {
     		{
     			armPneumatics.set(DoubleSolenoid.Value.kOff);
     		}
-	        commandArm = stick2.getY() ;
+	        commandArm = stick2.getY();
     		
-    		if ( (commandArm < .2) && (commandArm > -.2) )
+    		if ( (commandArm < deadSpotMax) && (commandArm > deadSpotMin) )
     		{
     			commandArm = 0 ;
 
@@ -287,10 +326,33 @@ public class Robot extends IterativeRobot {
     		}
     		else
     		{
-    			armLeft.set(commandArm*-1.05) ;
-    			armRight.set(commandArm*-1) ;
+    			armLeft.set(commandArm*-1.05);
+    			armRight.set(commandArm*-1);
     		}
 	        myRobot.mecanumDrive_Cartesian(commandY, rotation, commandX, fieldCentric);
+	        
+	        
+	        
+	        
+	        acclX = accl.getX();
+	        acclY = accl.getY();
+	        acclZ = accl.getZ(); // TODO: Magic Vectors
+	        
+	        aCurrent = 1; //acceleration read from sensor and used with vector stuff
+	        vCurrent += integralOf(a1, a2, a3, aCurrent);
+	        dCurrent += integralOf(v1, v2, v3, vCurrent);
+	        
+	        SmartDashboard.putNumber("dCurrent", dCurrent);
+	        
+	        
+/*
+ * 	1/3h(f_0+4f_1+f_2)
+ */
+	        
+	        SmartDashboard.putNumber("acclX", acclX);
+	        SmartDashboard.putNumber("acclY", acclY);
+	        SmartDashboard.putNumber("acclZ", acclZ);
+	        
 	        LiveWindow.run();
 	        
 	        Timer.delay(0.005);
