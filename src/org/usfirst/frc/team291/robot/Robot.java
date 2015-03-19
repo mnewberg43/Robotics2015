@@ -333,5 +333,42 @@ public class Robot extends IterativeRobot {
     	
     	myRobot.mecanumDrive_Cartesian( 0, 0, 0, 0);
     }
+	
+	public double joystickTransferFunction(double input, double deadbandMag, double maxOutput) {
+	// This is going to take an input from -1.0 to 1.0 and
+	// provide an output that will be used by the robot drive.
+	
+		double	output ,
+				slope ,
+				offset ;
+		slope = maxOutput / (1 - deadbandMag) ;
+		offset = slope * deadbandMag ;
+		if (input < (-1.0) )
+		{
+			input = -1.0 ;
+		}
+		
+		if (input > 1.0)
+		{
+			input = 1.0 ;
+		}
+		
+		if (input < (-deadbandMag))
+		{
+			output = (input * slope) + offset ;
+		}
+		else if (input < (deadbandMag) )
+		{
+			output = 0.0 ;
+		}
+		else
+		{
+			output = (input * slope) - offset ;
+		}
+	
+	
+	
+	}
+	
     
 }
