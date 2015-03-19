@@ -51,7 +51,8 @@ public class Robot extends IterativeRobot {
 	double ycomm = 0 ;
 	double rotSpeedScale = 1.75 ,
 			maxYComm = .7 ,
-			maxXComm = .7 ;
+			maxXComm = .7 ,
+			deadband = 0.1 ;
 	double timeCounter = 0 ,
 			timeCounterMax = 12 ;
 	double lastRotCommand = 0 ;
@@ -164,19 +165,27 @@ public class Robot extends IterativeRobot {
     		
 
     		xcomm = stick.getX();
-    		if (xcomm > maxXComm)
-    			{xcomm = maxXComm ;}
-    		if (xcomm < -maxXComm)
-    			{xcomm = -maxXComm ;}
-    		if ((xcomm < .1) && (xcomm > -.1) )
-    		{xcomm = 0 ;}
+			
+			xcomm = xTrans(xcomm) ;
+    		
+			//if (xcomm > maxXComm)
+   // 			{xcomm = maxXComm ;}
+   // 		if (xcomm < -maxXComm)
+   // 			{xcomm = -maxXComm ;}
+   // 		if ((xcomm < .1) && (xcomm > -.1) )
+   // 		{xcomm = 0 ;}
+			
     		ycomm = stick.getY();
-    		if (ycomm > maxYComm )
-    			{ycomm = maxYComm ;}
-    		if (ycomm < -maxYComm)
-    		{ycomm = -maxYComm; }
-    		if ((ycomm < .1) && (ycomm > -.1) )
-    		{ycomm = 0 ;}
+			
+			ycomm = yTrans(ycomm) ;
+			
+			//Old code in case above functions don't work
+   // 		if (ycomm > maxYComm )
+   // 			{ycomm = maxYComm ;}
+   // 		if (ycomm < -maxYComm)
+   // 		{ycomm = -maxYComm; }
+   // 		if ((ycomm < .1) && (ycomm > -.1) )
+   // 		{ycomm = 0 ;}
     	
     		rotation = stick.getRawAxis(4);
 
@@ -334,6 +343,24 @@ public class Robot extends IterativeRobot {
     	myRobot.mecanumDrive_Cartesian( 0, 0, 0, 0);
     }
 	
+	public double xTrans(double xinput) {
+		double output ;
+		
+		output = joystickTransferFunction(xinput, deadband, maxXComm) ;
+		
+		return output ;
+
+	}
+	
+	public double yTrans(double yinput) {
+		double output ;
+		
+		output = joystickTransferFunction(yinput, deadband, maxYComm) ;
+		
+		return output ;
+
+	}
+	
 	public double joystickTransferFunction(double input, double deadbandMag, double maxOutput) {
 	// This is going to take an input from -1.0 to 1.0 and
 	// provide an output that will be used by the robot drive.
@@ -341,8 +368,10 @@ public class Robot extends IterativeRobot {
 		double	output ,
 				slope ,
 				offset ;
+				
 		slope = maxOutput / (1 - deadbandMag) ;
 		offset = slope * deadbandMag ;
+		
 		if (input < (-1.0) )
 		{
 			input = -1.0 ;
@@ -366,7 +395,7 @@ public class Robot extends IterativeRobot {
 			output = (input * slope) - offset ;
 		}
 	
-	
+		return output ;
 	
 	}
 	
